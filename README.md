@@ -85,7 +85,7 @@ You can find a working Postman collection for this API [here](https://www.postma
    - Clone the repository from the provided URL.
    - Install the necessary dependencies using `npm install`.
    - Set up the environment variable `NEXT_PUBLIC_BACKEND_URL` with the base URL `https://beta.api.bytebeds.com`.
-   - Ensure the project runs successfully by executing `npm start`.
+   - Ensure the project runs successfully by executing `npm start` or `npm run dev`.
 
 2. **Implement Infinite Scrolling:**
 
