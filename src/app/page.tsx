@@ -165,6 +165,8 @@ export default function Page() {
     ).format("YYYY-MM-DD"),
   });
 
+  console.log(room_calendar, "room calendar");
+
   // Component to render each month row in the calendar
   const MonthRow: React.FC<ListChildComponentProps> = memo(function MonthRowFC({
     index,
@@ -357,21 +359,23 @@ export default function Page() {
           </Grid>
 
           {room_calendar.isSuccess
-            ? room_calendar.data.data.room_categories.map(
-                (room_category, key) => (
+            ? room_calendar.data.pages.map((page, pageIndex) =>
+                page.data.room_categories.map((room_category, roomIndex) => (
                   <RoomRateAvailabilityCalendar
-                    key={key}
-                    index={key}
+                    key={`${pageIndex}-${roomIndex}`}
+                    index={roomIndex}
                     InventoryRefs={InventoryRefs}
                     isLastElement={
-                      key === room_calendar.data.data.room_categories.length - 1
+                      pageIndex === room_calendar.data.pages.length - 1 &&
+                      roomIndex === page.data.room_categories.length - 1
                     }
                     room_category={room_category}
                     handleCalenderScroll={handleCalenderScroll}
                   />
-                )
+                ))
               )
             : null}
+
           {room_calendar.isLoading && (
             <Box
               sx={{
