@@ -70,8 +70,9 @@ export default function useRoomRateAvailabilityCalendar(params: IParams) {
     url.search = new URLSearchParams({
       start_date: params.start_date,
       end_date: params.end_date,
-      cursor: pageParam, // Cursor for pagination
+      cursor: pageParam, 
     }).toString();
+
 
     // Fetch and directly return IResponse wrapped in IResult
     const response = await Fetch<IResult<IResponse>>({
@@ -84,11 +85,10 @@ export default function useRoomRateAvailabilityCalendar(params: IParams) {
 
   // Infinite query using useInfiniteQuery
   return useInfiniteQuery({
-    queryKey: ["property_room_calendar", params], // Unique query key
+    queryKey: ["property_room_calendar", params], 
     queryFn: fetchRateCalendar, // Fetch function
     getNextPageParam: (lastPage) => {
-      // Access nextCursor from lastPage.data
-      console.log(lastPage, "last page nextCursor");
+      // @ts-expect-error: I know this is okay
       return lastPage.data.nextCursor || null;
     },
     initialPageParam: "0", // Set the initial cursor value

@@ -38,6 +38,7 @@ import { countDaysByMonth } from "@/utils";
 import RoomRateAvailabilityCalendar from "./(components)/RoomCalendar";
 import Navbar from "@/components/Navbar";
 import useRoomRateAvailabilityCalendar from "./(hooks)/useRoomRateAvailabilityCalendar";
+import { debounce } from "lodash";
 
 // Define the form type for the date range picker
 export type CalendarForm = {
@@ -78,22 +79,38 @@ export default function Page() {
   }, []);
 
   // Handle horizontal scroll for the entire calendar
+  // const handleCalenderScroll = useCallback(
+  //   ({ scrollLeft }: GridOnScrollProps) => {
+  //     InventoryRefs.current.forEach((ref) => {
+  //       if (ref.current) {
+  //         ref.current.scrollTo({ scrollLeft });
+  //       }
+  //     });
+  //     if (calenderMonthsRef.current) {
+  //       calenderMonthsRef.current.scrollTo(scrollLeft);
+  //     }
+  //     if (calenderDatesRef.current) {
+  //       calenderDatesRef.current.scrollTo({ scrollLeft });
+  //     }
+  //   },
+  //   []
+  // );
   const handleCalenderScroll = useCallback(
-    ({ scrollLeft }: GridOnScrollProps) => {
-      InventoryRefs.current.forEach((ref) => {
-        if (ref.current) {
-          ref.current.scrollTo({ scrollLeft });
-        }
-      });
-      if (calenderMonthsRef.current) {
-        calenderMonthsRef.current.scrollTo(scrollLeft);
+  debounce(({ scrollLeft }: GridOnScrollProps) => {
+    InventoryRefs.current.forEach((ref) => {
+      if (ref.current) {
+        ref.current.scrollTo({ scrollLeft });
       }
-      if (calenderDatesRef.current) {
-        calenderDatesRef.current.scrollTo({ scrollLeft });
-      }
-    },
-    []
-  );
+    });
+    if (calenderMonthsRef.current) {
+      calenderMonthsRef.current.scrollTo(scrollLeft);
+    }
+    if (calenderDatesRef.current) {
+      calenderDatesRef.current.scrollTo({ scrollLeft });
+    }
+  }, 200), // Adjust debounce delay as needed (in ms)
+  []
+);
 
   // Add event listener for wheel scroll to handle horizontal scrolling
   useEffect(() => {
@@ -165,7 +182,48 @@ export default function Page() {
     ).format("YYYY-MM-DD"),
   });
 
-  console.log(room_calendar, "room calendar");
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage } =
+    useRoomRateAvailabilityCalendar({
+      property_id: propertyId,
+      start_date: watchedDateRange[0]!.format("YYYY-MM-DD"),
+      end_date: (watchedDateRange[1]
+        ? watchedDateRange[1]
+        : watchedDateRange[0]!.add(2, "month")
+      ).format("YYYY-MM-DD"),
+    });
+  const observer = useRef<IntersectionObserver | null>(null);
+  const lastElementRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    if (!hasNextPage || isFetchingNextPage) return;
+
+    observer.current = new IntersectionObserver(
+      (entries) => {
+        // console.log("Observer Triggered:", entries[0]);
+        if (entries[0].isIntersecting) {
+          // console.log("Fetching next page...");
+          fetchNextPage();
+        }
+      },
+      { rootMargin: "200px", threshold: 0.1 }
+    );
+
+    if (lastElementRef.current) {
+      observer.current.observe(lastElementRef.current);
+      // console.log("Observer attached to:", lastElementRef.current); // Debugging line
+    }
+
+    return () => {
+      if (observer.current && lastElementRef.current) {
+        observer.current.unobserve(lastElementRef.current);
+        // console.log("Observer detached from:", lastElementRef.current); // Debugging line
+      }
+    };
+  }, [hasNextPage, isFetchingNextPage, fetchNextPage]);
+
+  // console.log("data", data);
+
+  // console.log(room_calendar, "room calendar");
 
   // Component to render each month row in the calendar
   const MonthRow: React.FC<ListChildComponentProps> = memo(function MonthRowFC({
@@ -229,7 +287,7 @@ export default function Page() {
   areEqual);
 
   return (
-    <Container sx={{ backgroundColor: "#EEF2F6" }}>
+    <Container sx={{ backgroundColor: "#EEF2F6", overflowY: "auto", height: "100vh" }}>
       <Navbar />
       <Box>
         <Card elevation={1} sx={{ padding: 4, mt: 4 }}>
@@ -357,8 +415,35 @@ export default function Page() {
               </AutoSizer>
             </Grid>
           </Grid>
+          {data?.pages.map((page, pageIndex) =>
+          // @ts-expect-error: I know this is okay
+          page.data.room_categories.map((room, roomIndex) => {
+            const isLastItem =
+              pageIndex === data.pages.length - 1 &&
+              // @ts-expect-error: I know this is okay
+              roomIndex === page.data.room_categories.length - 1;
 
-          {room_calendar.isSuccess
+            return (
+              <div
+                key={room.id}
+                className="border p-3 mb-2"
+                ref={isLastItem ? lastElementRef : null} // Attach ref only to last item
+              >
+                <RoomRateAvailabilityCalendar
+                    index={roomIndex}
+                    InventoryRefs={InventoryRefs}
+                    isLastElement={
+                      isLastItem
+                    }
+                    room_category={room}
+                    handleCalenderScroll={handleCalenderScroll}
+                  />
+              </div>
+            );
+          })
+        )}
+
+          {/* {room_calendar.isSuccess
             ? room_calendar.data.pages.map((page, pageIndex) =>
                 page.data.room_categories.map((room_category, roomIndex) => (
                   <RoomRateAvailabilityCalendar
@@ -374,7 +459,7 @@ export default function Page() {
                   />
                 ))
               )
-            : null}
+            : null} */}
 
           {room_calendar.isLoading && (
             <Box
@@ -404,6 +489,7 @@ export default function Page() {
           © {new Date().getFullYear()} Grit System. All rights reserved.
         </Typography>
       </Box>
+      
     </Container>
   );
 }
